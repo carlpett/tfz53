@@ -1,0 +1,11 @@
+{
+	"ImportPath": "github.com/carlpett/bzfttr53rdutil",
+	"GoVersion": "go1.6",
+	"GodepVersion": "v67",
+	"Deps": [
+		{
+			"ImportPath": "github.com/miekg/dns",
+			"Rev": "5d001d020961ae1c184f9f8152fdc73810481677"
+		}
+	]
+}
