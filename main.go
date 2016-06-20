@@ -128,7 +128,8 @@ func main() {
 	resource := template.Must(template.New("resource").Funcs(template.FuncMap{"ensureQuoted": ensureQuoted}).Parse(recordTemplate))
 	for _, rec := range records {
 		hyphenatedName := strings.Replace(strings.TrimRight(rec.Name, "."), ".", "-", -1)
-		id := fmt.Sprintf("%s-%s", hyphenatedName, rec.Type)
+		wildcardCleanedName := strings.Replace(hyphenatedName, "*", "wildcard", -1)
+		id := fmt.Sprintf("%s-%s", wildcardCleanedName, rec.Type)
 		info := RecordTemplateData{
 			ResourceId: id,
 			Record:     rec,
