@@ -2,9 +2,15 @@
 Or BZFTTR53RDUtil, for "short". Lack of nice, pronouncible name aside, this small utility creates a [Terraform](https://terraform.io) file for Route53 resources from a BIND zonefile.
 
 ## Usage
-`bzfttr53rdutil <domain-name> > route53-domain.tf`
+`bzfttr53rdutil -domain <domain-name> [flags] > route53-domain.tf`
 
-The utility accepts a domain name as only parameter, and assumes that there is a file in the working directory named `<domain-name>.zone`. It writes the Terraform resources to stdout.
+## Flags
+| Name       | Description                                        | Default         |
+|------------|----------------------------------------------------|-----------------|
+| -domain    | Name of domain. Required.                          |                 |
+| -zone-file | Path to zone file. Optional.                       | `<domain>.zone` |
+| -exclude   | Record types to ignore, comma-separated. Optional. | `SOA,NS`        |
+
 
 ## Building
 Just `go build`!

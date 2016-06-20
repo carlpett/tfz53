@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -47,10 +48,30 @@ type RecordKey struct {
 	Type string
 }
 
+var (
+	excludedTypesRaw = flag.String("exclude", "SOA,NS", "Comma-separated list of record types to ignore")
+	excludedTypes    map[string]bool
+	domain           = flag.String("domain", "", "Name of domain")
+	zoneFile         = flag.String("zone-file", "", "Path to zone file. Defaults to <domain>.zone in working dir")
+)
+
+func init() {
+	flag.Parse()
+	if *domain == "" {
+		log.Fatal("Domain is required")
+	}
+	if *zoneFile == "" {
+		*zoneFile = fmt.Sprintf("%s.zone", *domain)
+	}
+
+	excludedTypes = make(map[string]bool)
+	for _, t := range strings.Split(*excludedTypesRaw, ",") {
+		excludedTypes[strings.ToUpper(t)] = true
+	}
+}
+
 func main() {
-	domain := os.Args[1]
-	filename := fmt.Sprintf("%s.zone", domain)
-	bytes, err := ioutil.ReadFile(filename)
+	bytes, err := ioutil.ReadFile(*zoneFile)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -63,14 +84,23 @@ func main() {
 			log.Printf("Error: %v\n", rr.Error)
 		} else {
 			header := rr.Header()
+			recordType := dns.Type(header.Rrtype).String()
+			isExcluded, ok := excludedTypes[recordType]
+
+			if ok && isExcluded {
+				continue
+			}
+
 			data := strings.TrimPrefix(rr.String(), header.String())
 			key := RecordKey{
 				Name: header.Name,
-				Type: dns.Type(header.Rrtype).String(),
+				Type: recordType,
 			}
 			if rec, ok := records[key]; ok {
 				rec.Data = append(rec.Data, data)
-				rec.Comments = append(rec.Comments, strings.TrimLeft(rr.Comment, ";"))
+				if rr.Comment != "" {
+					rec.Comments = append(rec.Comments, strings.TrimLeft(rr.Comment, ";"))
+				}
 			} else {
 				comments := make([]string, 0)
 				if rr.Comment != "" {
@@ -87,7 +117,7 @@ func main() {
 		}
 	}
 
-	zoneName := strings.TrimRight(domain, ".")
+	zoneName := strings.TrimRight(*domain, ".")
 	ZoneTemplateData := ZoneTemplateData{
 		Id:     strings.Replace(zoneName, ".", "-", -1),
 		Domain: zoneName,
