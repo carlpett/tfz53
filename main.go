@@ -15,7 +15,9 @@ const zoneTemplate = `resource "aws_route53_zone" "{{ .Id }}" {
    name = "{{ .Domain }}"
 }
 `
-const recordTemplate = `resource "aws_route53_record" "{{ .ResourceId }}" {
+const recordTemplate = `{{- range .Record.Comments }}
+# {{ . }}{{ end }}
+resource "aws_route53_record" "{{ .ResourceId }}" {
    zone_id = "${aws_route53_zone.{{ .Zone.Id }}.zone_id}"
    name = "{{ .Record.Name }}"
    type = "{{ .Record.Type }}"
@@ -34,10 +36,11 @@ type RecordTemplateData struct {
 	Zone       ZoneTemplateData
 }
 type TerraformRecord struct {
-	Name string
-	Type string
-	Ttl  uint32
-	Data []string
+	Name     string
+	Type     string
+	Ttl      uint32
+	Data     []string
+	Comments []string
 }
 type RecordKey struct {
 	Name string
@@ -67,12 +70,18 @@ func main() {
 			}
 			if rec, ok := records[key]; ok {
 				rec.Data = append(rec.Data, data)
+				rec.Comments = append(rec.Comments, strings.TrimLeft(rr.Comment, ";"))
 			} else {
+				comments := make([]string, 0)
+				if rr.Comment != "" {
+					comments = append(comments, strings.TrimLeft(rr.Comment, ";"))
+				}
 				records[key] = &TerraformRecord{
-					Name: key.Name,
-					Type: key.Type,
-					Ttl:  header.Ttl,
-					Data: []string{data},
+					Name:     key.Name,
+					Type:     key.Type,
+					Ttl:      header.Ttl,
+					Data:     []string{data},
+					Comments: comments,
 				}
 			}
 		}
