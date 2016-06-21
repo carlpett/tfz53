@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"sort"
 	"strings"
 	"text/template"
 
@@ -46,6 +47,22 @@ type TerraformRecord struct {
 type RecordKey struct {
 	Name string
 	Type string
+}
+type RecordKeySlice []RecordKey
+
+func (records RecordKeySlice) Len() int {
+	return len(records)
+}
+func (records RecordKeySlice) Less(i, j int) bool {
+	genKey := func(k RecordKey) string {
+		return fmt.Sprintf("%s-%s", k.Name, k.Type)
+	}
+	return genKey(records[i]) < genKey(records[j])
+}
+func (records RecordKeySlice) Swap(i, j int) {
+	tmp := records[i]
+	records[i] = records[j]
+	records[j] = tmp
 }
 
 var (
@@ -126,7 +143,14 @@ func main() {
 	terraformZone.Execute(os.Stdout, ZoneTemplateData)
 
 	resource := template.Must(template.New("resource").Funcs(template.FuncMap{"ensureQuoted": ensureQuoted}).Parse(recordTemplate))
-	for _, rec := range records {
+	recordKeys := make(RecordKeySlice, 0, len(records))
+	for key, _ := range records {
+		recordKeys = append(recordKeys, key)
+	}
+	sort.Sort(sort.Reverse(recordKeys))
+
+	for _, key := range recordKeys {
+		rec := records[key]
 		hyphenatedName := strings.Replace(strings.TrimRight(rec.Name, "."), ".", "-", -1)
 		wildcardCleanedName := strings.Replace(hyphenatedName, "*", "wildcard", -1)
 		id := fmt.Sprintf("%s-%s", wildcardCleanedName, rec.Type)
