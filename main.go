@@ -108,9 +108,14 @@ func main() {
 				continue
 			}
 
+			name := strings.ToLower(header.Name)
 			data := strings.TrimPrefix(rr.String(), header.String())
+			if recordType == "CNAME" {
+				data = strings.ToLower(data)
+			}
+
 			key := RecordKey{
-				Name: header.Name,
+				Name: name,
 				Type: recordType,
 			}
 			if rec, ok := records[key]; ok {
