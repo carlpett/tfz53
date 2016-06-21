@@ -79,7 +79,7 @@ func main() {
 	reader := strings.NewReader(zone)
 
 	records := make(map[RecordKey]*TerraformRecord)
-	for rr := range dns.ParseZone(reader, "", "") {
+	for rr := range dns.ParseZone(reader, *domain, *zoneFile) {
 		if rr.Error != nil {
 			log.Printf("Error: %v\n", rr.Error)
 		} else {
