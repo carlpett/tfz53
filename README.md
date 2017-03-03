@@ -1,6 +1,9 @@
 # BIND-zonefile-to-Terraform-Route53-resource-definition utility
 Or BZFTTR53RDUtil, for "short". Lack of nice, pronouncible name aside, this small utility creates a [Terraform](https://terraform.io) file for Route53 resources from a BIND zonefile.
 
+## Installation
+Download the [latest release](https://github.com/carlpett/bzfttr53rdutil/releases/latest).
+
 ## Usage
 `bzfttr53rdutil -domain <domain-name> [flags] > route53-domain.tf`
 
@@ -13,6 +16,16 @@ Or BZFTTR53RDUtil, for "short". Lack of nice, pronouncible name aside, this smal
 
 
 ## Building
-Just `go build`!
+If you want to build from source, you will first need the Go tools. Instructions for installation are available from the [documentation](https://golang.org/doc/install#install).
 
-This project uses Godeps. See their [Github page](https://github.com/tools/godep) for more information.
+Once that is done, run 
+
+```bash
+go get github.com/carlpett/bzfttr53rdutil
+cd $GOPATH/src/github.com/carlpett/bzfttr53rdutil
+go build
+```
+
+You should now have a finished binary.
+
+This project uses Godeps to manage external dependencies. See their [Github page](https://github.com/tools/godep) for more information.
