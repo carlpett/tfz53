@@ -1,0 +1,95 @@
+resource "aws_route53_zone" "example-com" {
+   name = "example.com"
+}
+
+#  wwwtest.example.com is another alias for www.example.com
+resource "aws_route53_record" "wwwtest-example-com-CNAME" {
+   zone_id = "${aws_route53_zone.example-com.zone_id}"
+   name = "wwwtest.example.com."
+   type = "CNAME"
+   ttl = "3600"
+   records = ["www.example.com."]
+}
+
+#  www.example.com is an alias for example.com
+resource "aws_route53_record" "www-example-com-CNAME" {
+   zone_id = "${aws_route53_zone.example-com.zone_id}"
+   name = "www.example.com."
+   type = "CNAME"
+   ttl = "3600"
+   records = ["example.com."]
+}
+
+#  IPv6 address for ns.example.com
+resource "aws_route53_record" "ns-example-com-AAAA" {
+   zone_id = "${aws_route53_zone.example-com.zone_id}"
+   name = "ns.example.com."
+   type = "AAAA"
+   ttl = "3600"
+   records = ["2001:db8:10::2"]
+}
+
+#  IPv4 address for ns.example.com
+resource "aws_route53_record" "ns-example-com-A" {
+   zone_id = "${aws_route53_zone.example-com.zone_id}"
+   name = "ns.example.com."
+   type = "A"
+   ttl = "3600"
+   records = ["192.0.2.2"]
+}
+
+#  IPv4 address for mail3.example.com
+resource "aws_route53_record" "mail3-example-com-A" {
+   zone_id = "${aws_route53_zone.example-com.zone_id}"
+   name = "mail3.example.com."
+   type = "A"
+   ttl = "3600"
+   records = ["192.0.2.5"]
+}
+
+#  IPv4 address for mail2.example.com
+resource "aws_route53_record" "mail2-example-com-A" {
+   zone_id = "${aws_route53_zone.example-com.zone_id}"
+   name = "mail2.example.com."
+   type = "A"
+   ttl = "3600"
+   records = ["192.0.2.4"]
+}
+
+#  IPv4 address for mail.example.com
+resource "aws_route53_record" "mail-example-com-A" {
+   zone_id = "${aws_route53_zone.example-com.zone_id}"
+   name = "mail.example.com."
+   type = "A"
+   ttl = "3600"
+   records = ["192.0.2.3"]
+}
+
+#  mail.example.com is the mailserver for example.com
+#  equivalent to above line, "@" represents zone origin
+#  equivalent to above line, but using a relative host name
+resource "aws_route53_record" "example-com-MX" {
+   zone_id = "${aws_route53_zone.example-com.zone_id}"
+   name = "example.com."
+   type = "MX"
+   ttl = "3600"
+   records = ["10 mail.example.com.","20 mail2.example.com.","50 mail3.example.com."]
+}
+
+#  IPv6 address for example.com
+resource "aws_route53_record" "example-com-AAAA" {
+   zone_id = "${aws_route53_zone.example-com.zone_id}"
+   name = "example.com."
+   type = "AAAA"
+   ttl = "3600"
+   records = ["2001:db8:10::1"]
+}
+
+#  IPv4 address for example.com
+resource "aws_route53_record" "example-com-A" {
+   zone_id = "${aws_route53_zone.example-com.zone_id}"
+   name = "example.com."
+   type = "A"
+   ttl = "3600"
+   records = ["192.0.2.1"]
+}
