@@ -7,6 +7,7 @@ jobs:
     steps:
       - checkout
       - run: make build
+      - run: make test
       - store_artifacts:
           path: bzfttr53rdutil
           destination: bzfttr53rdutil
