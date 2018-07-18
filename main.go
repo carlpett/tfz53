@@ -13,6 +13,15 @@ import (
 	"github.com/miekg/dns"
 )
 
+// Build information. Populated at build-time.
+var (
+	Version   string
+	Revision  string
+	Branch    string
+	BuildUser string
+	BuildDate string
+)
+
 const zoneTemplate = `resource "aws_route53_zone" "{{ .Id }}" {
    name = "{{ .Domain }}"
 }
@@ -70,10 +79,16 @@ var (
 	excludedTypes    map[string]bool
 	domain           = flag.String("domain", "", "Name of domain")
 	zoneFile         = flag.String("zone-file", "", "Path to zone file. Defaults to <domain>.zone in working dir")
+	showVersion      = flag.Bool("version", false, "Show version")
 )
 
 func init() {
 	flag.Parse()
+	if *showVersion {
+		fmt.Printf("bzfttr53rdutil %s (%s/%s) (%s on %s)", Version, Branch, Revision, BuildUser, BuildDate)
+		os.Exit(0)
+	}
+
 	if *domain == "" {
 		log.Fatal("Domain is required")
 	}
