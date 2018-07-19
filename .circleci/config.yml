@@ -30,7 +30,10 @@ workflows:
   version: 2
   github:
     jobs:
-      - build
+      - build:
+          filters:
+            tags:
+              only: /.*/
       - release:
           filters:
             branches:
