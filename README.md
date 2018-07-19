@@ -28,4 +28,4 @@ go build
 
 You should now have a finished binary.
 
-This project uses Godeps to manage external dependencies. See their [Github page](https://github.com/tools/godep) for more information.
+This project uses `dep` to manage external dependencies. See the [Github repo](https://github.com/golang/dep) for more information.
