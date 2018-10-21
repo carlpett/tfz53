@@ -21,7 +21,7 @@ build:
 
 crossbuild:
 	@echo ">> cross-compiling"
-	@gox -arch="$(CROSSBUILD_ARCH)" -os="$(CROSSBUILD_OS)" -ldflags="$(LDFLAGS)" -output="binaries/bzfttr53rdutil_{{.OS}}_{{.Arch}}"
+	@gox -arch="$(CROSSBUILD_ARCH)" -os="$(CROSSBUILD_OS)" -ldflags="$(LDFLAGS)" -output="binaries/tfz53_{{.OS}}_{{.Arch}}"
 
 test:
 	@echo ">> testing"

@@ -1,11 +1,11 @@
-# BIND-zonefile-to-Terraform-Route53-resource-definition utility
-Or BZFTTR53RDUtil, for "short". Lack of nice, pronouncible name aside, this small utility creates a [Terraform](https://terraform.io) file for Route53 resources from a BIND zonefile.
+# tfz53 (previously knows as bzfttr53rdutil)
+A conversion utility for creating [Terraform](https://terraform.io) resource definitions for AWS Route53 from BIND zonefiles.
 
 ## Installation
-Download the [latest release](https://github.com/carlpett/bzfttr53rdutil/releases/latest).
+Download the [latest release](https://github.com/carlpett/tfz53/releases/latest).
 
 ## Usage
-`bzfttr53rdutil -domain <domain-name> [flags] > route53-domain.tf`
+`tfz53 -domain <domain-name> [flags] > route53-domain.tf`
 
 ## Flags
 | Name       | Description                                        | Default         |
@@ -21,8 +21,8 @@ If you want to build from source, you will first need the Go tools. Instructions
 Once that is done, run 
 
 ```bash
-go get github.com/carlpett/bzfttr53rdutil
-cd $GOPATH/src/github.com/carlpett/bzfttr53rdutil
+go get github.com/carlpett/tfz53
+cd $GOPATH/src/github.com/carlpett/tfz53
 go build
 ```
 

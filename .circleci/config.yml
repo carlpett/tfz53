@@ -3,7 +3,7 @@ jobs:
   build:
     docker:
       - image: circleci/golang:1.10
-    working_directory: /go/src/github.com/carlpett/bzfttr53rdutil
+    working_directory: /go/src/github.com/carlpett/tfz53
     steps:
       - checkout
       - run: go get github.com/mitchellh/gox
@@ -19,7 +19,7 @@ jobs:
   release:
     docker:
       - image: circleci/golang:1.10
-    working_directory: /go/src/github.com/carlpett/bzfttr53rdutil
+    working_directory: /go/src/github.com/carlpett/tfz53
     steps:
       - checkout
       - attach_workspace:

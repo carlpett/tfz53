@@ -92,7 +92,7 @@ var (
 func main() {
 	flag.Parse()
 	if *showVersion {
-		fmt.Printf("bzfttr53rdutil %s (%s/%s) (%s on %s)", Version, Branch, Revision, BuildUser, BuildDate)
+		fmt.Printf("tfz53 %s (%s/%s) (%s on %s)", Version, Branch, Revision, BuildUser, BuildDate)
 		os.Exit(0)
 	}
 
