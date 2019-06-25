@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -11,10 +12,16 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-var diffOpts = cmp.Options{
-	cmp.Transformer("ignoreSurroundingWhitespace", func(in string) string {
-		return strings.TrimSpace(in)
-	}),
+var (
+	diffOpts = cmp.Options{
+		cmp.Transformer("ignoreSurroundingWhitespace", func(in string) string {
+			return strings.TrimSpace(in)
+		}),
+	}
+)
+
+func caseName(name string, syntax syntaxMode) string {
+	return fmt.Sprintf("%s-%v", name, syntax)
 }
 
 func TestGenerateRecordResource(t *testing.T) {
@@ -25,23 +32,49 @@ func TestGenerateRecordResource(t *testing.T) {
 		TTL:      3600,
 		Comments: []string{"This is a test"},
 	}
-	expected := `# This is a test
+
+	cases := []struct {
+		name     string
+		expected map[syntaxMode]string
+	}{
+		{
+			name: "basic",
+			expected: map[syntaxMode]string{
+				Modern: `# This is a test
+resource "aws_route53_record" "foo-bar-A" {
+  zone_id = aws_route53_zone.test-zone.zone_id
+  name    = "foo.bar"
+  type    = "A"
+  ttl     = "3600"
+  records = ["127.0.0.1"]
+}`,
+				Legacy: `# This is a test
 resource "aws_route53_record" "foo-bar-A" {
   zone_id = "${aws_route53_zone.test-zone.zone_id}"
   name    = "foo.bar"
   type    = "A"
   ttl     = "3600"
   records = ["127.0.0.1"]
-}`
-
-	var buf bytes.Buffer
-	err := generateRecordResource(record, "test-zone", &buf)
-	if err != nil {
-		t.Fatal(err)
+}`,
+			},
+		},
 	}
+	for _, tc := range cases {
+		for _, legacySyntax := range []syntaxMode{Modern, Legacy} {
+			t.Run(caseName(tc.name, legacySyntax), func(t *testing.T) {
+				g := newConfigGenerator(legacySyntax)
 
-	if diff := cmp.Diff(expected, buf.String(), diffOpts); diff != "" {
-		t.Errorf("Unexpected result from resource generation (-want +got):\n%s", diff)
+				var buf bytes.Buffer
+				err := g.generateRecordResource(record, "test-zone", &buf)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				if diff := cmp.Diff(tc.expected[legacySyntax], buf.String(), diffOpts); diff != "" {
+					t.Errorf("Unexpected result from resource generation (-want +got):\n%s", diff)
+				}
+			})
+		}
 	}
 }
 
@@ -74,24 +107,27 @@ func TestAcceptance(t *testing.T) {
 	}
 
 	for _, n := range fileNames {
-		t.Run(n, func(t *testing.T) {
-			file, err := os.Open(n)
-			if err != nil {
-				panic(err)
-			}
-			expected, err := ioutil.ReadFile(strings.Replace(n, ".zone", ".expected", 1))
-			if err != nil {
-				panic(err)
-			}
+		for _, syntax := range []syntaxMode{Modern, Legacy} {
+			t.Run(caseName(n, syntax), func(t *testing.T) {
+				file, err := os.Open(n)
+				if err != nil {
+					panic(err)
+				}
+				expected, err := ioutil.ReadFile(strings.Replace(n, ".zone", fmt.Sprintf(".expected-%v", syntax), 1))
+				if err != nil {
+					panic(err)
+				}
 
-			var buf bytes.Buffer
-			domain := strings.Replace(filepath.Base(n), ".zone", "", 1)
-			excludedTypes := excludedTypesFromString("SOA,NS")
-			generateTerraformForZone(domain, excludedTypes, file, &buf)
+				g := newConfigGenerator(syntax)
+				var buf bytes.Buffer
+				domain := strings.Replace(filepath.Base(n), ".zone", "", 1)
+				excludedTypes := excludedTypesFromString("SOA,NS")
+				g.generateTerraformForZone(domain, excludedTypes, file, &buf)
 
-			if diff := cmp.Diff(string(expected), buf.String(), diffOpts); diff != "" {
-				t.Errorf("Unexpected result from full Terraform output (-want +got):\n%s", diff)
-			}
-		})
+				if diff := cmp.Diff(string(expected), buf.String(), diffOpts); diff != "" {
+					t.Errorf("Unexpected result from full Terraform output (-want +got):\n%s", diff)
+				}
+			})
+		}
 	}
 }
