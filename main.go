@@ -25,17 +25,17 @@ var (
 
 const (
 	zoneTemplateStr = `resource "aws_route53_zone" "{{ .ID }}" {
-   name = "{{ .Domain }}"
+  name = "{{ .Domain }}"
 }
 `
 	recordTemplateStr = `{{- range .Record.Comments }}
 # {{ . }}{{ end }}
 resource "aws_route53_record" "{{ .ResourceID }}" {
-   zone_id = "${aws_route53_zone.{{ .ZoneID }}.zone_id}"
-   name = "{{ .Record.Name }}"
-   type = "{{ .Record.Type }}"
-   ttl = "{{ .Record.TTL }}"
-   records = [{{ range $idx, $elem := .Record.Data }}{{ if $idx }},{{ end }}{{ ensureQuoted $elem }}{{ end }}]
+  zone_id = "${aws_route53_zone.{{ .ZoneID }}.zone_id}"
+  name    = "{{ .Record.Name }}"
+  type    = "{{ .Record.Type }}"
+  ttl     = "{{ .Record.TTL }}"
+  records = [{{ range $idx, $elem := .Record.Data }}{{ if $idx }}, {{ end }}{{ ensureQuoted $elem }}{{ end }}]
 }
 `
 )

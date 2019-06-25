@@ -7,7 +7,15 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
 )
+
+var diffOpts = cmp.Options{
+	cmp.Transformer("ignoreSurroundingWhitespace", func(in string) string {
+		return strings.TrimSpace(in)
+	}),
+}
 
 func TestGenerateRecordResource(t *testing.T) {
 	record := dnsRecord{
@@ -19,11 +27,11 @@ func TestGenerateRecordResource(t *testing.T) {
 	}
 	expected := `# This is a test
 resource "aws_route53_record" "foo-bar-A" {
-   zone_id = "${aws_route53_zone.test-zone.zone_id}"
-   name = "foo.bar"
-   type = "A"
-   ttl = "3600"
-   records = ["127.0.0.1"]
+  zone_id = "${aws_route53_zone.test-zone.zone_id}"
+  name    = "foo.bar"
+  type    = "A"
+  ttl     = "3600"
+  records = ["127.0.0.1"]
 }`
 
 	var buf bytes.Buffer
@@ -32,8 +40,8 @@ resource "aws_route53_record" "foo-bar-A" {
 		t.Fatal(err)
 	}
 
-	if strings.TrimSpace(buf.String()) != expected {
-		t.Errorf("Unexpected result from resource generation. Expected:\n%s\nGot:\n%s", expected, buf.String())
+	if diff := cmp.Diff(expected, buf.String(), diffOpts); diff != "" {
+		t.Errorf("Unexpected result from resource generation (-want +got):\n%s", diff)
 	}
 }
 
@@ -81,8 +89,8 @@ func TestAcceptance(t *testing.T) {
 			excludedTypes := excludedTypesFromString("SOA,NS")
 			generateTerraformForZone(domain, excludedTypes, file, &buf)
 
-			if strings.TrimSpace(buf.String()) != strings.TrimSpace(string(expected)) {
-				t.Errorf("Unexpected result from full Terraform output. Expected:\n%s\nGot:\n%s", expected, buf.String())
+			if diff := cmp.Diff(string(expected), buf.String(), diffOpts); diff != "" {
+				t.Errorf("Unexpected result from full Terraform output (-want +got):\n%s", diff)
 			}
 		})
 	}
