@@ -31,7 +31,7 @@ const (
 	recordTemplateStr = `{{- range .Record.Comments }}
 # {{ . }}{{ end }}
 resource "aws_route53_record" "{{ .ResourceID }}" {
-  zone_id = "${aws_route53_zone.{{ .ZoneID }}.zone_id}"
+  zone_id = {{ zoneReference .ZoneID }}
   name    = "{{ .Record.Name }}"
   type    = "{{ .Record.Type }}"
   ttl     = "{{ .Record.TTL }}"
@@ -40,10 +40,40 @@ resource "aws_route53_record" "{{ .ResourceID }}" {
 `
 )
 
-var (
-	zoneTemplate   = template.Must(template.New("zone").Parse(zoneTemplateStr))
-	recordTemplate = template.Must(template.New("record").Funcs(template.FuncMap{"ensureQuoted": ensureQuoted}).Parse(recordTemplateStr))
+type syntaxMode uint8
+
+func (m syntaxMode) String() string {
+	switch m {
+	case Modern:
+		return "modern"
+	case Legacy:
+		return "legacy"
+	default:
+		panic("Unknown syntax")
+	}
+}
+
+const (
+	Modern syntaxMode = iota
+	Legacy
 )
+
+type configGenerator struct {
+	zoneTemplate   *template.Template
+	recordTemplate *template.Template
+
+	syntax syntaxMode
+}
+
+func newConfigGenerator(syntax syntaxMode) *configGenerator {
+	g := &configGenerator{syntax: syntax}
+	g.zoneTemplate = template.Must(template.New("zone").Parse(zoneTemplateStr))
+	g.recordTemplate = template.Must(template.New("record").Funcs(template.FuncMap{
+		"ensureQuoted":  ensureQuoted,
+		"zoneReference": g.zoneReference,
+	}).Parse(recordTemplateStr))
+	return g
+}
 
 type zoneTemplateData struct {
 	ID     string
@@ -87,6 +117,7 @@ var (
 	domain           = flag.String("domain", "", "Name of domain")
 	zoneFile         = flag.String("zone-file", "", "Path to zone file. Defaults to <domain>.zone in working dir")
 	showVersion      = flag.Bool("version", false, "Show version")
+	legacySyntax     = flag.Bool("legacy-syntax", false, "Generate legacy terraform syntax (versions older than 0.12)")
 )
 
 func main() {
@@ -110,13 +141,20 @@ func main() {
 		log.Fatal(err)
 	}
 
-	generateTerraformForZone(*domain, excludedTypes, fileReader, os.Stdout)
+	var syntax syntaxMode
+	if !*legacySyntax {
+		syntax = Modern
+	} else {
+		syntax = Legacy
+	}
+	g := newConfigGenerator(syntax)
+	g.generateTerraformForZone(*domain, excludedTypes, fileReader, os.Stdout)
 }
 
-func generateTerraformForZone(domain string, excludedTypes map[uint16]bool, zoneReader io.Reader, output io.Writer) {
+func (g *configGenerator) generateTerraformForZone(domain string, excludedTypes map[uint16]bool, zoneReader io.Reader, output io.Writer) {
 	records := readZoneRecords(zoneReader, excludedTypes)
 
-	zoneID, err := generateZoneResource(domain, output)
+	zoneID, err := g.generateZoneResource(domain, output)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -129,7 +167,7 @@ func generateTerraformForZone(domain string, excludedTypes map[uint16]bool, zone
 
 	for _, key := range recordKeys {
 		rec := records[key]
-		err := generateRecordResource(rec, zoneID, output)
+		err := g.generateRecordResource(rec, zoneID, output)
 		if err != nil {
 			log.Printf("Error: %v\n", err)
 			continue
@@ -163,18 +201,18 @@ func readZoneRecords(zoneReader io.Reader, excludedTypes map[uint16]bool) map[re
 	return records
 }
 
-func generateZoneResource(domain string, w io.Writer) (string, error) {
+func (g *configGenerator) generateZoneResource(domain string, w io.Writer) (string, error) {
 	zoneName := strings.TrimRight(domain, ".")
 	data := zoneTemplateData{
 		ID:     strings.Replace(zoneName, ".", "-", -1),
 		Domain: zoneName,
 	}
 
-	err := zoneTemplate.Execute(w, data)
+	err := g.zoneTemplate.Execute(w, data)
 	return data.ID, err
 }
 
-func generateRecordResource(record dnsRecord, zoneID string, w io.Writer) error {
+func (g *configGenerator) generateRecordResource(record dnsRecord, zoneID string, w io.Writer) error {
 	sanitizedName := sanitizeRecordName(record.Name)
 	id := fmt.Sprintf("%s-%s", sanitizedName, record.Type)
 
@@ -184,7 +222,7 @@ func generateRecordResource(record dnsRecord, zoneID string, w io.Writer) error 
 		ZoneID:     zoneID,
 	}
 
-	return recordTemplate.Execute(w, data)
+	return g.recordTemplate.Execute(w, data)
 }
 
 func mergeRecords(a, b dnsRecord) dnsRecord {
@@ -266,4 +304,15 @@ func ensureQuoted(s string) string {
 		return s
 	}
 	return fmt.Sprintf("%q", s)
+}
+
+func (g *configGenerator) zoneReference(zone string) string {
+	switch g.syntax {
+	case Modern:
+		return fmt.Sprintf("aws_route53_zone.%s.zone_id", zone)
+	case Legacy:
+		return fmt.Sprintf(`"${aws_route53_zone.%s.zone_id}"`, zone)
+	default:
+		panic(fmt.Sprintf("Unknown mode %v", g.syntax))
+	}
 }
