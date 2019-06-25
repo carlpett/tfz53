@@ -1,3 +1,5 @@
+github.com/google/go-cmp v0.3.0 h1:crn/baboCvb5fXaQ0IJ1SGTsTVrWpDsCWC8EGETZijY=
+github.com/google/go-cmp v0.3.0/go.mod h1:8QqcDgzrUqlUb/G2PQTWiueGozuR1884gddMywk6iLU=
 github.com/miekg/dns v1.0.8 h1:Zi8HNpze3NeRWH1PQV6O71YcvJRQ6j0lORO6DAEmAAI=
 github.com/miekg/dns v1.0.8/go.mod h1:W1PPwlIAgtquWBMBEV9nkV9Cazfe8ScdGz/Lj7v3Nrg=
 golang.org/x/crypto v0.0.0-20180718160520-a2144134853f h1:lRy+hhwk7YT7MsKejxuz0C5Q1gk6p/QoPQYEmKmGFb8=
