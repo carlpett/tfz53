@@ -266,7 +266,8 @@ func generateRecord(rr *dns.Token) dnsRecord {
 // 2. * is replaced by the string "wildcard"
 // 3. IDN records are cleaned using punycode conversion
 // 4. Any remaining non-allowed characters are replaced underscore
-// 5. The record type is appended
+// 5. If the start of the record name is not a valid Terraform identifier,
+//    then prepend an underscore.
 func sanitizeRecordName(name string) string {
 	withoutDots := strings.Replace(strings.TrimRight(name, "."), ".", "-", -1)
 	withoutAsterisk := strings.Replace(withoutDots, "*", "wildcard", -1)
@@ -286,7 +287,13 @@ func sanitizeRecordName(name string) string {
 		return '_'
 	}, punycoded)
 
-	return id
+	if (id[0] >= 'a' && id[0] <= 'z') ||
+		(id[0] >= 'A' && id[0] <= 'Z') ||
+		(id[0] == '_') {
+		return id
+	}
+
+	return fmt.Sprintf("_%s", id)
 }
 
 func excludedTypesFromString(s string) map[uint16]bool {

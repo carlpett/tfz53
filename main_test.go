@@ -88,6 +88,7 @@ func TestResourceNameSanitation(t *testing.T) {
 		{"åäö.bar.com", "xn---bar-com-zzaj2q"},
 		{"#issue-2.github.com", "_issue-2-github-com"},
 		{"//issue-2.github.com", "__issue-2-github-com"},
+		{"12-issue-12.github.com", "_12-issue-12-github-com"},
 	}
 
 	for _, c := range cases {
