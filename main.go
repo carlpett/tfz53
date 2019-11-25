@@ -10,6 +10,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/iancoleman/strcase"
 	"github.com/miekg/dns"
 	"golang.org/x/net/idna"
 )
@@ -24,11 +25,11 @@ var (
 )
 
 const (
-	zoneTemplateStr = `resource "aws_route53_zone" "{{ .ID }}" {
+	tfZoneTemplateStr = `resource "aws_route53_zone" "{{ .ID }}" {
   name = "{{ .Domain }}"
 }
 `
-	recordTemplateStr = `{{- range .Record.Comments }}
+	tfRecordTemplateStr = `{{- range .Record.Comments }}
 # {{ . }}{{ end }}
 resource "aws_route53_record" "{{ .ResourceID }}" {
   zone_id = {{ zoneReference .ZoneID }}
@@ -37,6 +38,25 @@ resource "aws_route53_record" "{{ .ResourceID }}" {
   ttl     = "{{ .Record.TTL }}"
   records = [{{ range $idx, $elem := .Record.Data }}{{ if $idx }}, {{ end }}{{ ensureQuoted $elem }}{{ end }}]
 }
+`
+
+	cfnZoneTemplateStr = `Resources:
+  {{ .ID }}:
+    Type: AWS::Route53::HostedZone
+    Properties:
+      Name: "{{ .Domain }}"
+`
+	cfnRecordTemplateStr = `{{- range .Record.Comments }}
+  # {{ . }}{{ end }}
+  {{ .ResourceID }}:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref {{ .ZoneID }}
+      Name: "{{ .Record.Name }}"
+      Type: "{{ .Record.Type }}"
+      TTL: "{{ .Record.TTL }}"
+      ResourceRecords:{{ range $idx, $elem := .Record.Data }}
+      - {{ ensureQuoted $elem }}{{ end }}
 `
 )
 
@@ -48,6 +68,8 @@ func (m syntaxMode) String() string {
 		return "modern"
 	case Legacy:
 		return "legacy"
+	case Cloudformation:
+		return "cloudformation"
 	default:
 		panic("Unknown syntax")
 	}
@@ -56,6 +78,7 @@ func (m syntaxMode) String() string {
 const (
 	Modern syntaxMode = iota
 	Legacy
+	Cloudformation
 )
 
 type configGenerator struct {
@@ -66,6 +89,16 @@ type configGenerator struct {
 }
 
 func newConfigGenerator(syntax syntaxMode) *configGenerator {
+	var zoneTemplateStr string
+	var recordTemplateStr string
+	if syntax == Cloudformation {
+		zoneTemplateStr = cfnZoneTemplateStr
+		recordTemplateStr = cfnRecordTemplateStr
+	} else {
+		zoneTemplateStr = tfZoneTemplateStr
+		recordTemplateStr = tfRecordTemplateStr
+	}
+
 	g := &configGenerator{syntax: syntax}
 	g.zoneTemplate = template.Must(template.New("zone").Parse(zoneTemplateStr))
 	g.recordTemplate = template.Must(template.New("record").Funcs(template.FuncMap{
@@ -118,6 +151,7 @@ var (
 	zoneFile         = flag.String("zone-file", "", "Path to zone file. Defaults to <domain>.zone in working dir")
 	showVersion      = flag.Bool("version", false, "Show version")
 	legacySyntax     = flag.Bool("legacy-syntax", false, "Generate legacy terraform syntax (versions older than 0.12)")
+	cloudformation   = flag.Bool("cloudformation", false, "Generate cloudformation syntax")
 )
 
 func main() {
@@ -142,16 +176,18 @@ func main() {
 	}
 
 	var syntax syntaxMode
-	if !*legacySyntax {
+	if *cloudformation {
+		syntax = Cloudformation
+	} else if !*legacySyntax {
 		syntax = Modern
 	} else {
 		syntax = Legacy
 	}
 	g := newConfigGenerator(syntax)
-	g.generateTerraformForZone(*domain, excludedTypes, fileReader, os.Stdout)
+	g.generateTemplateForZone(*domain, excludedTypes, fileReader, os.Stdout)
 }
 
-func (g *configGenerator) generateTerraformForZone(domain string, excludedTypes map[uint16]bool, zoneReader io.Reader, output io.Writer) {
+func (g *configGenerator) generateTemplateForZone(domain string, excludedTypes map[uint16]bool, zoneReader io.Reader, output io.Writer) {
 	records := readZoneRecords(zoneReader, excludedTypes)
 
 	zoneID, err := g.generateZoneResource(domain, output)
@@ -203,8 +239,15 @@ func readZoneRecords(zoneReader io.Reader, excludedTypes map[uint16]bool) map[re
 
 func (g *configGenerator) generateZoneResource(domain string, w io.Writer) (string, error) {
 	zoneName := strings.TrimRight(domain, ".")
+	var zoneID string
+
+	if g.syntax == Cloudformation {
+		zoneID = strcase.ToCamel(zoneName)
+	} else {
+		zoneID = strings.Replace(zoneName, ".", "-", -1)
+	}
 	data := zoneTemplateData{
-		ID:     strings.Replace(zoneName, ".", "-", -1),
+		ID:     zoneID,
 		Domain: zoneName,
 	}
 
@@ -215,6 +258,9 @@ func (g *configGenerator) generateZoneResource(domain string, w io.Writer) (stri
 func (g *configGenerator) generateRecordResource(record dnsRecord, zoneID string, w io.Writer) error {
 	sanitizedName := sanitizeRecordName(record.Name)
 	id := fmt.Sprintf("%s-%s", sanitizedName, record.Type)
+	if g.syntax == Cloudformation {
+		id = strcase.ToCamel(id)
+	}
 
 	data := recordTemplateData{
 		ResourceID: id,

@@ -1,0 +1,119 @@
+Resources:
+  ExampleCom:
+    Type: AWS::Route53::HostedZone
+    Properties:
+      Name: "example.com"
+
+  #  wwwtest.example.com is another alias for www.example.com
+  WwwtestExampleComCNAME:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref ExampleCom
+      Name: "wwwtest.example.com."
+      Type: "CNAME"
+      TTL: "3600"
+      ResourceRecords:
+      - "www.example.com."
+
+  #  www.example.com is an alias for example.com
+  WwwExampleComCNAME:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref ExampleCom
+      Name: "www.example.com."
+      Type: "CNAME"
+      TTL: "3600"
+      ResourceRecords:
+      - "example.com."
+
+  #  IPv6 address for ns.example.com
+  NsExampleComAAAA:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref ExampleCom
+      Name: "ns.example.com."
+      Type: "AAAA"
+      TTL: "3600"
+      ResourceRecords:
+      - "2001:db8:10::2"
+
+  #  IPv4 address for ns.example.com
+  NsExampleComA:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref ExampleCom
+      Name: "ns.example.com."
+      Type: "A"
+      TTL: "3600"
+      ResourceRecords:
+      - "192.0.2.2"
+
+  #  IPv4 address for mail3.example.com
+  Mail3ExampleComA:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref ExampleCom
+      Name: "mail3.example.com."
+      Type: "A"
+      TTL: "3600"
+      ResourceRecords:
+      - "192.0.2.5"
+
+  #  IPv4 address for mail2.example.com
+  Mail2ExampleComA:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref ExampleCom
+      Name: "mail2.example.com."
+      Type: "A"
+      TTL: "3600"
+      ResourceRecords:
+      - "192.0.2.4"
+
+  #  IPv4 address for mail.example.com
+  MailExampleComA:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref ExampleCom
+      Name: "mail.example.com."
+      Type: "A"
+      TTL: "3600"
+      ResourceRecords:
+      - "192.0.2.3"
+
+  #  mail.example.com is the mailserver for example.com
+  #  equivalent to above line, "@" represents zone origin
+  #  equivalent to above line, but using a relative host name
+  ExampleComMX:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref ExampleCom
+      Name: "example.com."
+      Type: "MX"
+      TTL: "3600"
+      ResourceRecords:
+      - "10 mail.example.com."
+      - "20 mail2.example.com."
+      - "50 mail3.example.com."
+
+  #  IPv6 address for example.com
+  ExampleComAAAA:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref ExampleCom
+      Name: "example.com."
+      Type: "AAAA"
+      TTL: "3600"
+      ResourceRecords:
+      - "2001:db8:10::1"
+
+  #  IPv4 address for example.com
+  ExampleComA:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref ExampleCom
+      Name: "example.com."
+      Type: "A"
+      TTL: "3600"
+      ResourceRecords:
+      - "192.0.2.1"

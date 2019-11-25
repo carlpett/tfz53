@@ -1,11 +1,14 @@
 # tfz53 (previously knows as bzfttr53rdutil)
-A conversion utility for creating [Terraform](https://terraform.io) resource definitions for AWS Route53 from BIND zonefiles.
+A conversion utility for creating [Terraform](https://terraform.io) or [Cloudformation](https://aws.amazon.com/cloudformation/) resource definitions for AWS Route53 from BIND zonefiles.
 
 ## Installation
 Download the [latest release](https://github.com/carlpett/tfz53/releases/latest).
 
 ## Usage
 `tfz53 -domain <domain-name> [flags] > route53-domain.tf`
+
+`tfz53 -cloudformation -domain <domain-name> [flags] > route53-domain.cfn.yaml`
+
 
 ## Flags
 | Name       | Description                                        | Default         |
