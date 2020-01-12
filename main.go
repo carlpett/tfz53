@@ -23,23 +23,6 @@ var (
 	BuildDate string
 )
 
-const (
-	zoneTemplateStr = `resource "aws_route53_zone" "{{ .ID }}" {
-  name = "{{ .Domain }}"
-}
-`
-	recordTemplateStr = `{{- range .Record.Comments }}
-# {{ . }}{{ end }}
-resource "aws_route53_record" "{{ .ResourceID }}" {
-  zone_id = {{ zoneReference .ZoneID }}
-  name    = "{{ .Record.Name }}"
-  type    = "{{ .Record.Type }}"
-  ttl     = "{{ .Record.TTL }}"
-  records = [{{ range $idx, $elem := .Record.Data }}{{ if $idx }}, {{ end }}{{ ensureQuoted $elem }}{{ end }}]
-}
-`
-)
-
 type syntaxMode uint8
 
 func (m syntaxMode) String() string {
@@ -65,13 +48,13 @@ type configGenerator struct {
 	syntax syntaxMode
 }
 
-func newConfigGenerator(syntax syntaxMode) *configGenerator {
+func newConfigGenerator(syntax syntaxMode, provider dnsProvider) *configGenerator {
 	g := &configGenerator{syntax: syntax}
-	g.zoneTemplate = template.Must(template.New("zone").Parse(zoneTemplateStr))
+	g.zoneTemplate = template.Must(template.New("zone").Parse(provider.zoneTemplate))
 	g.recordTemplate = template.Must(template.New("record").Funcs(template.FuncMap{
 		"ensureQuoted":  ensureQuoted,
 		"zoneReference": g.zoneReference,
-	}).Parse(recordTemplateStr))
+	}).Parse(provider.recordTemplate))
 	return g
 }
 
@@ -118,6 +101,7 @@ var (
 	zoneFile         = flag.String("zone-file", "", "Path to zone file. Defaults to <domain>.zone in working dir")
 	showVersion      = flag.Bool("version", false, "Show version")
 	legacySyntax     = flag.Bool("legacy-syntax", false, "Generate legacy terraform syntax (versions older than 0.12)")
+	provider         = flag.String("provider", "Route53", "DNS provider")
 )
 
 func main() {
@@ -147,7 +131,7 @@ func main() {
 	} else {
 		syntax = Legacy
 	}
-	g := newConfigGenerator(syntax)
+	g := newConfigGenerator(syntax, cloudDNS)
 	g.generateTerraformForZone(*domain, excludedTypes, fileReader, os.Stdout)
 }
 

@@ -62,7 +62,7 @@ resource "aws_route53_record" "foo-bar-A" {
 	for _, tc := range cases {
 		for _, legacySyntax := range []syntaxMode{Modern, Legacy} {
 			t.Run(caseName(tc.name, legacySyntax), func(t *testing.T) {
-				g := newConfigGenerator(legacySyntax)
+				g := newConfigGenerator(legacySyntax, route53DNS)
 
 				var buf bytes.Buffer
 				err := g.generateRecordResource(record, "test-zone", &buf)
@@ -119,7 +119,7 @@ func TestAcceptance(t *testing.T) {
 					panic(err)
 				}
 
-				g := newConfigGenerator(syntax)
+				g := newConfigGenerator(syntax, cloudDNS)
 				var buf bytes.Buffer
 				domain := strings.Replace(filepath.Base(n), ".zone", "", 1)
 				excludedTypes := excludedTypesFromString("SOA,NS")
