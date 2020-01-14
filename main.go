@@ -31,6 +31,7 @@ const (
 	recordTemplateStr = `{{- range .Record.Comments }}
 # {{ . }}{{ end }}
 resource "aws_route53_record" "{{ .ResourceID }}" {
+  count   = "{{ env_check }}"
   zone_id = {{ zoneReference .ZoneID }}
   name    = "{{ .Record.Name }}"
   type    = "{{ .Record.Type }}"
@@ -65,11 +66,17 @@ type configGenerator struct {
 	syntax syntaxMode
 }
 
+func env_check() string {
+	env_chk := fmt.Sprintf("${var.env == \"%s\" ? 1 : 0}", *env)
+	return env_chk
+}
+
 func newConfigGenerator(syntax syntaxMode) *configGenerator {
 	g := &configGenerator{syntax: syntax}
 	g.zoneTemplate = template.Must(template.New("zone").Parse(zoneTemplateStr))
 	g.recordTemplate = template.Must(template.New("record").Funcs(template.FuncMap{
 		"ensureQuoted":  ensureQuoted,
+		"env_check":     env_check,
 		"zoneReference": g.zoneReference,
 	}).Parse(recordTemplateStr))
 	return g
@@ -115,6 +122,7 @@ func (records recordKeySlice) Swap(i, j int) {
 var (
 	excludedTypesRaw = flag.String("exclude", "SOA,NS", "Comma-separated list of record types to ignore")
 	domain           = flag.String("domain", "", "Name of domain")
+	env              = flag.String("env", "", "Environment to use")
 	zoneFile         = flag.String("zone-file", "", "Path to zone file. Defaults to <domain>.zone in working dir")
 	showVersion      = flag.Bool("version", false, "Show version")
 	legacySyntax     = flag.Bool("legacy-syntax", false, "Generate legacy terraform syntax (versions older than 0.12)")
@@ -129,6 +137,9 @@ func main() {
 
 	if *domain == "" {
 		log.Fatal("Domain is required")
+	}
+	if *env == "" {
+		log.Fatal("Env is required")
 	}
 	if *zoneFile == "" {
 		*zoneFile = fmt.Sprintf("%s.zone", *domain)
@@ -147,6 +158,7 @@ func main() {
 	} else {
 		syntax = Legacy
 	}
+
 	g := newConfigGenerator(syntax)
 	g.generateTerraformForZone(*domain, excludedTypes, fileReader, os.Stdout)
 }
@@ -154,10 +166,7 @@ func main() {
 func (g *configGenerator) generateTerraformForZone(domain string, excludedTypes map[uint16]bool, zoneReader io.Reader, output io.Writer) {
 	records := readZoneRecords(zoneReader, excludedTypes)
 
-	zoneID, err := g.generateZoneResource(domain, output)
-	if err != nil {
-		log.Fatal(err)
-	}
+	zoneID := g.generateZoneResource(domain, output)
 
 	recordKeys := make(recordKeySlice, 0, len(records))
 	for key := range records {
@@ -201,15 +210,17 @@ func readZoneRecords(zoneReader io.Reader, excludedTypes map[uint16]bool) map[re
 	return records
 }
 
-func (g *configGenerator) generateZoneResource(domain string, w io.Writer) (string, error) {
+func (g *configGenerator) generateZoneResource(domain string, w io.Writer) string {
 	zoneName := strings.TrimRight(domain, ".")
 	data := zoneTemplateData{
 		ID:     strings.Replace(zoneName, ".", "-", -1),
 		Domain: zoneName,
 	}
-
-	err := g.zoneTemplate.Execute(w, data)
-	return data.ID, err
+	if strings.Contains(data.ID, "arpa") {
+		data.ID = "r-" + data.ID
+	}
+	//err := g.zoneTemplate.Execute(w, data)
+	return data.ID
 }
 
 func (g *configGenerator) generateRecordResource(record dnsRecord, zoneID string, w io.Writer) error {
@@ -244,25 +255,6 @@ func generateRecord(rr *dns.Token) dnsRecord {
 	data := strings.TrimPrefix(rr.String(), header.String())
 	if key.Type == "CNAME" {
 		data = strings.ToLower(data)
-	}
-
-	if key.Type == "TXT" {
-		// TXT records can be up to 255 characters long in BIND format. Cloud
-		// DNS Terraform providers lets them be longer by joining them with
-		// a \"\" sequence. So we split by " " (which is inserted by miekg/dns
-		// unless already in the source file), trim away any spaces, then join
-		// by the escape sequence. So the following:
-		// foo IN TXT "long-[250 chars]-string"
-		// ... will be hava a data section like this before being adjusted:
-		// "long-[250 chars]" "-string"
-		// Below, we merge this into
-		// "long-[250 chars]\"\"-string"
-		// Which is then properly passed from Terraform to Route 53
-		parts := strings.Split(data, `" "`)
-		for pidx := range parts {
-			parts[pidx] = strings.TrimSpace(parts[pidx])
-		}
-		data = strings.Join(parts, `\"\"`)
 	}
 
 	comments := make([]string, 0)
@@ -335,9 +327,9 @@ func ensureQuoted(s string) string {
 func (g *configGenerator) zoneReference(zone string) string {
 	switch g.syntax {
 	case Modern:
-		return fmt.Sprintf("aws_route53_zone.%s.zone_id", zone)
+		return fmt.Sprintf("\"${aws_route53_zone.%s.*.zone_id[count.index]}\"", zone)
 	case Legacy:
-		return fmt.Sprintf(`"${aws_route53_zone.%s.zone_id}"`, zone)
+		return fmt.Sprintf(`"\"${aws_route53_zone.%s.*.zone_id[count.index]}\"`, zone)
 	default:
 		panic(fmt.Sprintf("Unknown mode %v", g.syntax))
 	}
