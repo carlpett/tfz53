@@ -65,6 +65,14 @@ resource "aws_route53_record" "mail-example-com-A" {
   records = ["192.0.2.3"]
 }
 
+resource "aws_route53_record" "long-example-com-TXT" {
+  zone_id = "${aws_route53_zone.example-com.zone_id}"
+  name    = "long.example.com."
+  type    = "TXT"
+  ttl     = "3600"
+  records = ["over-255-characters=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\"\"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", "more text which isn't joined to previous record"]
+}
+
 #  mail.example.com is the mailserver for example.com
 #  equivalent to above line, "@" represents zone origin
 #  equivalent to above line, but using a relative host name

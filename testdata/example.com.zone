@@ -16,3 +16,5 @@ wwwtest       IN  CNAME www                   ; wwwtest.example.com is another a
 mail          IN  A     192.0.2.3             ; IPv4 address for mail.example.com
 mail2         IN  A     192.0.2.4             ; IPv4 address for mail2.example.com
 mail3         IN  A     192.0.2.5             ; IPv4 address for mail3.example.com
+long          IN  TXT   "over-255-characters=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef " "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+long          IN  TXT   "more text which isn't joined to previous record"
