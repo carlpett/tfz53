@@ -257,6 +257,25 @@ func generateRecord(rr *dns.Token) dnsRecord {
 		data = strings.ToLower(data)
 	}
 
+	if key.Type == "TXT" {
+		// TXT records can be up to 255 characters long in BIND format. Cloud
+		// DNS Terraform providers lets them be longer by joining them with
+		// a \"\" sequence. So we split by " " (which is inserted by miekg/dns
+		// unless already in the source file), trim away any spaces, then join
+		// by the escape sequence. So the following:
+		// foo IN TXT "long-[250 chars]-string"
+		// ... will be hava a data section like this before being adjusted:
+		// "long-[250 chars]" "-string"
+		// Below, we merge this into
+		// "long-[250 chars]\"\"-string"
+		// Which is then properly passed from Terraform to Route 53
+		parts := strings.Split(data, `" "`)
+		for pidx := range parts {
+			parts[pidx] = strings.TrimSpace(parts[pidx])
+		}
+		data = strings.Join(parts, `\"\"`)
+	}
+
 	comments := make([]string, 0)
 	if rr.Comment != "" {
 		comments = append(comments, strings.TrimLeft(rr.Comment, ";"))
