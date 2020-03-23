@@ -24,8 +24,13 @@ var (
 )
 
 const (
-	zoneTemplateStr = `resource "aws_route53_zone" "{{ .ID }}" {
+	zoneTemplatePublicStr = `data "aws_route53_zone" "{{ .ID }}" {
   name = "{{ .Domain }}"
+}
+`
+	zoneTemplatePrivateStr = `data "aws_route53_zone" "{{ .ID }}" {
+  name = "{{ .Domain }}"
+  private_zone = true
 }
 `
 	recordTemplateStr = `{{- range .Record.Comments }}
@@ -71,9 +76,13 @@ func env_check() string {
 	return env_chk
 }
 
-func newConfigGenerator(syntax syntaxMode) *configGenerator {
+func newConfigGenerator(syntax syntaxMode, zoneType string) *configGenerator {
 	g := &configGenerator{syntax: syntax}
-	g.zoneTemplate = template.Must(template.New("zone").Parse(zoneTemplateStr))
+	if zoneType == "public" {
+		g.zoneTemplate = template.Must(template.New("zone").Parse(zoneTemplatePublicStr))
+	} else {
+		g.zoneTemplate = template.Must(template.New("zone").Parse(zoneTemplatePrivateStr))
+	}
 	g.recordTemplate = template.Must(template.New("record").Funcs(template.FuncMap{
 		"ensureQuoted":  ensureQuoted,
 		"env_check":     env_check,
@@ -124,6 +133,7 @@ var (
 	domain           = flag.String("domain", "", "Name of domain")
 	env              = flag.String("env", "", "Environment to use")
 	zoneFile         = flag.String("zone-file", "", "Path to zone file. Defaults to <domain>.zone in working dir")
+	zoneType         = flag.String("zone-type", "", "Set to public or private")
 	showVersion      = flag.Bool("version", false, "Show version")
 	legacySyntax     = flag.Bool("legacy-syntax", false, "Generate legacy terraform syntax (versions older than 0.12)")
 )
@@ -144,7 +154,9 @@ func main() {
 	if *zoneFile == "" {
 		*zoneFile = fmt.Sprintf("%s.zone", *domain)
 	}
-
+	if *zoneType == "" {
+		log.Fatal("Zone-type is required")
+	}
 	excludedTypes := excludedTypesFromString(*excludedTypesRaw)
 
 	fileReader, err := os.Open(*zoneFile)
@@ -159,7 +171,7 @@ func main() {
 		syntax = Legacy
 	}
 
-	g := newConfigGenerator(syntax)
+	g := newConfigGenerator(syntax, *zoneType)
 	g.generateTerraformForZone(*domain, excludedTypes, fileReader, os.Stdout)
 }
 
@@ -219,7 +231,7 @@ func (g *configGenerator) generateZoneResource(domain string, w io.Writer) strin
 	if strings.Contains(data.ID, "arpa") {
 		data.ID = "r-" + data.ID
 	}
-	//err := g.zoneTemplate.Execute(w, data)
+	g.zoneTemplate.Execute(w, data)
 	return data.ID
 }
 
@@ -346,9 +358,9 @@ func ensureQuoted(s string) string {
 func (g *configGenerator) zoneReference(zone string) string {
 	switch g.syntax {
 	case Modern:
-		return fmt.Sprintf("\"${aws_route53_zone.%s.*.zone_id[count.index]}\"", zone)
+		return fmt.Sprintf("\"${data.aws_route53_zone.%s.*.zone_id[count.index]}\"", zone)
 	case Legacy:
-		return fmt.Sprintf(`"\"${aws_route53_zone.%s.*.zone_id[count.index]}\"`, zone)
+		return fmt.Sprintf(`"\"${data.aws_route53_zone.%s.*.zone_id[count.index]}\"`, zone)
 	default:
 		panic(fmt.Sprintf("Unknown mode %v", g.syntax))
 	}

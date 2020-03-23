@@ -5,7 +5,7 @@ A conversion utility for creating [Terraform](https://terraform.io) resource def
 Download the [latest release](https://github.com/carlpett/tfz53/releases/latest).
 
 ## Usage
-`tfz53 -env mgmt -domain <domain-name> [flags] > route53-domain.tf`
+`tfz53 -domain <domain-name> [flags] > route53-domain.tf`
 
 ## Flags
 | Name       | Description                                        | Default         |
@@ -13,7 +13,6 @@ Download the [latest release](https://github.com/carlpett/tfz53/releases/latest)
 | -domain    | Name of domain. Required.                          |                 |
 | -zone-file | Path to zone file. Optional.                       | `<domain>.zone` |
 | -exclude   | Record types to ignore, comma-separated. Optional. | `SOA,NS`        |
-| -env       | Specify env that the zone will be used for.        |                 |
 
 
 ## Building
