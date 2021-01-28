@@ -24,18 +24,19 @@ var (
 )
 
 const (
-	zoneTemplateStr = `resource "aws_route53_zone" "{{ .ID }}" {
+	zoneTemplateStr = `resource "google_dns_managed_zone" "{{ .ID }}" {
   name = "{{ .Domain }}"
 }
 `
 	recordTemplateStr = `{{- range .Record.Comments }}
 # {{ . }}{{ end }}
-resource "aws_route53_record" "{{ .ResourceID }}" {
-  zone_id = {{ zoneReference .ZoneID }}
+resource "google_dns_record_set" "{{ .ResourceID }}" {
+  project = "syb-common-projects"
+  managed_zone = "syb-sh"
   name    = "{{ .Record.Name }}"
   type    = "{{ .Record.Type }}"
   ttl     = "{{ .Record.TTL }}"
-  records = [{{ range $idx, $elem := .Record.Data }}{{ if $idx }}, {{ end }}{{ ensureQuoted $elem }}{{ end }}]
+  rrdatas = [{{ range $idx, $elem := .Record.Data }}{{ if $idx }}, {{ end }}{{ ensureQuoted $elem }}{{ end }}]
 }
 `
 )
