@@ -56,6 +56,17 @@ resource "aws_route53_record" "foo-bar-A" {
   ttl     = "3600"
   records = ["127.0.0.1"]
 }`,
+				Cloudformation: `# This is a test
+Resources:
+  FooBarA:
+    Type: AWS::Route53::RecordSet
+	Properties:
+	  HostedZoneId: !Ref TestZone
+	  Name: "foo.bar"
+	  Type: "A"
+	  TTL: ""3600"
+	  ResourceRecords:
+	  - "127.0.0.1"`,
 			},
 		},
 	}
@@ -108,7 +119,7 @@ func TestAcceptance(t *testing.T) {
 	}
 
 	for _, n := range fileNames {
-		for _, syntax := range []syntaxMode{Modern, Legacy} {
+		for _, syntax := range []syntaxMode{Modern, Legacy, Cloudformation} {
 			t.Run(caseName(n, syntax), func(t *testing.T) {
 				file, err := os.Open(n)
 				if err != nil {
@@ -123,7 +134,7 @@ func TestAcceptance(t *testing.T) {
 				var buf bytes.Buffer
 				domain := strings.Replace(filepath.Base(n), ".zone", "", 1)
 				excludedTypes := excludedTypesFromString("SOA,NS")
-				g.generateTerraformForZone(domain, excludedTypes, file, &buf)
+				g.generateTemplateForZone(domain, excludedTypes, file, &buf)
 
 				if diff := cmp.Diff(string(expected), buf.String(), diffOpts); diff != "" {
 					t.Errorf("Unexpected result from full Terraform output (-want +got):\n%s", diff)
