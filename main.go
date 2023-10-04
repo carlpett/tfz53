@@ -339,9 +339,9 @@ func ensureQuoted(s string) string {
 func (g *configGenerator) zoneReference(zone string) string {
 	switch g.syntax {
 	case Modern:
-		return fmt.Sprintf("aws_route53_zone.%s.zone_id", zone)
+		return fmt.Sprintf("module.%s.zone_id", zone)
 	case Legacy:
-		return fmt.Sprintf(`"${aws_route53_zone.%s.zone_id}"`, zone)
+		return fmt.Sprintf(`"${module.%s.zone_id}"`, zone)
 	default:
 		panic(fmt.Sprintf("Unknown mode %v", g.syntax))
 	}
