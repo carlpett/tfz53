@@ -36,7 +36,7 @@ const (
 # {{ . }}{{ end }}
 resource "aws_route53_record" "{{ .ResourceID }}" {
   zone_id = {{ zoneReference .ZoneID }}
-  name    = "{{ .Record.Name }}"
+  name    = "{{ eraseDomain .Record.Name }}"
   type    = "{{ .Record.Type }}"
   ttl     = "{{ .Record.TTL }}"
   records = [{{ range $idx, $elem := .Record.Data }}{{ if $idx }}, {{ end }}{{ ensureQuoted $elem }}{{ end }}]
@@ -75,6 +75,7 @@ func newConfigGenerator(syntax syntaxMode) *configGenerator {
 	g.recordTemplate = template.Must(template.New("record").Funcs(template.FuncMap{
 		"ensureQuoted":  ensureQuoted,
 		"zoneReference": g.zoneReference,
+		"eraseDomain":   g.eraseDomain,
 	}).Parse(recordTemplateStr))
 	return g
 }
@@ -117,7 +118,7 @@ func (records recordKeySlice) Swap(i, j int) {
 }
 
 var (
-	excludedTypesRaw = flag.String("exclude", "SOA,NS", "Comma-separated list of record types to ignore")
+	excludedTypesRaw = flag.String("exclude", "SOA", "Comma-separated list of record types to ignore")
 	domain           = flag.String("domain", "", "Name of domain")
 	zoneFile         = flag.String("zone-file", "", "Path to zone file. Defaults to <domain>.zone in working dir")
 	showVersion      = flag.Bool("version", false, "Show version")
@@ -338,6 +339,15 @@ func ensureQuoted(s string) string {
 		return s
 	}
 	return fmt.Sprintf("%q", s)
+}
+
+func (g *configGenerator) eraseDomain(name string) string {
+	switch name {
+	case *domain + ".":
+		return ""
+	default:
+		return name
+	}
 }
 
 func (g *configGenerator) zoneReference(zone string) string {
