@@ -241,10 +241,6 @@ func generateRecord(rr *dns.Token) dnsRecord {
 	header := rr.Header()
 	name := strings.ToLower(header.Name)
 
-	if name == "@" {
-		name = ""
-	}
-
 	key := recordKey{
 		Name: name,
 		Type: dns.TypeToString[header.Rrtype],
