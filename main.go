@@ -24,8 +24,12 @@ var (
 )
 
 const (
-	zoneTemplateStr = `resource "aws_route53_zone" "{{ .ID }}" {
-  name = "{{ .Domain }}"
+	zoneTemplateStr = `module "{{ .ID }}" {
+  
+  source = "../modules/zone/"
+
+  zone_name            = "{{ .Domain }}"
+  certmanager_username = "user-certmanager-{{ .Domain }}"
 }
 `
 	recordTemplateStr = `{{- range .Record.Comments }}
@@ -281,12 +285,12 @@ func generateRecord(rr *dns.Token) dnsRecord {
 // sanitizeRecordName creates a normalized record name that Terraform accepts.
 // Terraform only allows letters, numbers, dashes and underscores, while DNS
 // records allow far more.
-// 1. All dots are replaced with -
-// 2. * is replaced by the string "wildcard"
-// 3. IDN records are cleaned using punycode conversion
-// 4. Any remaining non-allowed characters are replaced underscore
-// 5. If the start of the record name is not a valid Terraform identifier,
-//    then prepend an underscore.
+//  1. All dots are replaced with -
+//  2. * is replaced by the string "wildcard"
+//  3. IDN records are cleaned using punycode conversion
+//  4. Any remaining non-allowed characters are replaced underscore
+//  5. If the start of the record name is not a valid Terraform identifier,
+//     then prepend an underscore.
 func sanitizeRecordName(name string) string {
 	withoutDots := strings.Replace(strings.TrimRight(name, "."), ".", "-", -1)
 	withoutAsterisk := strings.Replace(withoutDots, "*", "wildcard", -1)
